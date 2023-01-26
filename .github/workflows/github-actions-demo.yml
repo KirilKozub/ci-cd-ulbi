@@ -28,4 +28,8 @@ jobs:
         run: npm run lint
       - name: e2e test
         run: npm run test:e2e
+      - name: Print a few lines
+        run: |
+          echo first line
+          echo second line
 
