@@ -51,3 +51,80 @@ export function createDeepPropertySorter(keyOrKeys) {
     return aVal.localeCompare(bVal, 'de-DE', { sensitivity: 'base' });
   };
 }
+
+
+
+import { expect } from '@open-wc/testing';
+import { createDeepPropertySorter } from './your-module-path.js'; // adjust path
+// getValueByPath is internal, so you can test it by extracting it separately if needed
+
+// Manually replicate getValueByPath for isolated testing
+function getValueByPath(obj, path) {
+  return path.split('.').reduce((acc, key) => acc?.[key], obj);
+}
+
+describe('getValueByPath', () => {
+  it('retrieves nested value correctly', () => {
+    const obj = { a: { b: { c: 'value' } } };
+    expect(getValueByPath(obj, 'a.b.c')).to.equal('value');
+  });
+
+  it('returns undefined for invalid path', () => {
+    const obj = { a: { b: 123 } };
+    expect(getValueByPath(obj, 'a.b.c')).to.be.undefined;
+  });
+
+  it('returns top-level value', () => {
+    const obj = { name: 'Serhii' };
+    expect(getValueByPath(obj, 'name')).to.equal('Serhii');
+  });
+});
+
+describe('createDeepPropertySorter', () => {
+  const data = [
+    { alias: '', profile: { name: 'John' }, name: 'Alpha' },
+    { alias: '#Provider', profile: { name: 'Zack' }, name: 'Zeta' },
+    { alias: 'Anna', profile: { name: 'Beta' }, name: 'Bravo' },
+    { name: 'Delta' },
+  ];
+
+  it('sorts by alias if present and not empty', () => {
+    const sorted = [...data].sort(createDeepPropertySorter(['alias', 'profile.name', 'name']));
+    const titles = sorted.map(i => i.alias || i.profile?.name || i.name);
+    expect(titles).to.deep.equal(['Anna', 'John', 'Delta', '#Provider']);
+  });
+
+  it('handles string path instead of array', () => {
+    const data = [
+      { name: 'Beta' },
+      { name: 'Alpha' },
+      { name: 'Charlie' },
+    ];
+    const sorted = [...data].sort(createDeepPropertySorter('name'));
+    const names = sorted.map(i => i.name);
+    expect(names).to.deep.equal(['Alpha', 'Beta', 'Charlie']);
+  });
+
+  it('places values starting with special chars at the end', () => {
+    const data = [
+      { alias: '@admin' },
+      { alias: 'beta' },
+      { alias: '#user' },
+      { alias: 'alpha' },
+    ];
+    const sorted = [...data].sort(createDeepPropertySorter('alias'));
+    const aliases = sorted.map(i => i.alias);
+    expect(aliases).to.deep.equal(['alpha', 'beta', '@admin', '#user']);
+  });
+
+  it('handles missing values gracefully', () => {
+    const data = [
+      {},
+      { name: 'Bravo' },
+      { profile: { name: 'Alpha' } },
+    ];
+    const sorted = [...data].sort(createDeepPropertySorter(['profile.name', 'name']));
+    const result = sorted.map(i => i.profile?.name || i.name || '');
+    expect(result).to.deep.equal(['Alpha', 'Bravo', '']);
+  });
+});
